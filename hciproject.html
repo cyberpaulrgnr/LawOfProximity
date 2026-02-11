@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestalt: Proximity Challenge</title>
+    <style>
+        /* --- 1. CSS VARIABLES & RESET --- */
+        :root {
+            --bg-body: #0f1115;
+            --bg-panel: #1b1e23;
+            --bg-surface: #262a32;
+            --accent-primary: #3b82f6; /* Electric Blue */
+            --accent-hover: #60a5fa;
+            --accent-success: #10b981;
+            --accent-error: #ef4444;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: var(--font-stack);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* --- 2. LAYOUT & STRUCTURE --- */
+        .app-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            background: var(--bg-panel);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* --- 3. SIDEBAR (CONTROLS) --- */
+        .sidebar {
+            padding: 40px;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+        
+        .brand span { color: var(--accent-primary); }
+
+        .level-info h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .task-description {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+
+        /* Sliders */
+        .control-group { margin-bottom: 30px; }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: var(--text-main);
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--bg-surface);
+            border-radius: 2px;
+        }
+
+        /* Button */
+        .btn-main {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .btn-main:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-main:active { transform: translateY(0); }
+        
+        .btn-main.disabled {
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* --- 4. STAGE (VISUALIZATION) --- */
+        .stage {
+            background: #15181c;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .proximity-grid {
+            display: grid;
+            /* Default grid structure - updated via JS */
+            grid-template-columns: repeat(6, 1fr); 
+            transition: gap 0.4s var(--ease-out); /* The Magic Animation */
+            background: rgba(255,255,255,0.02);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .dot {
+            width: 24px;
+            height: 24px;
+            background-color: var(--text-main);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* --- 5. OVERLAYS & FEEDBACK --- */
+        .feedback-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s;
+        }
+        
+        .feedback-overlay.show { opacity: 1; transform: translateY(0); }
+        .feedback-overlay.success { border-color: var(--accent-success); color: var(--accent-success); }
+        .feedback-overlay.error { border-color: var(--accent-error); color: var(--accent-error); }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--bg-surface);
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 800px) {
+            .app-container { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: 100vh; border-radius: 0; }
+            .sidebar { padding: 20px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
+            .proximity-grid { padding: 20px; }
+            .dot { width: 16px; height: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div>
+                <div class="brand">Gestalt<span>.Proximity</span></div>
+                
+                <div class="level-info">
+                    <h2 id="level-indicator">Level 1/4</h2>
+                    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+                </div>
+                
+                <br>
+                
+                <div class="task-description" id="task-text">
+                    Loading Mission...
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Horizontal Spacing</span>
+                        <span id="gap-x-val">20px</span>
+                    </div>
+                    <input type="range" id="gap-x" min="4" max="100" value="20">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Vertical Spacing</span>
+                        <span id="gap-y-val">20px</span>
+                    </div>
+                    <input type="range" id="gap-y" min="4" max="100" value="20">
+                </div>
+            </div>
+
+            <button class="btn-main" id="check-btn">Verify Design</button>
+        </aside>
+
+        <main class="stage">
+            <div id="feedback" class="feedback-overlay">
+                <span id="feedback-icon">✓</span>
+                <span id="feedback-text">Target matched!</span>
+            </div>
+
+            <div class="proximity-grid" id="grid">
+                </div>
+        </main>
+    </div>
+
+    <script>
+        /**
+         * GESTALT PROXIMITY ENGINE
+         * Handles game state, grid generation, and validation logic.
+         */
+        
+        // --- Configuration ---
+        const CONFIG = {
+            gridSize: 36, // 6x6 grid
+            cols: 6
+        };
+
+        // --- Game State ---
+        const state = {
+            currentLevel: 0,
+            gapX: 20,
+            gapY: 20
+        };
+
+        // --- Levels Data ---
+        const levels = [
+            {
+                id: 1,
+                prompt: "Use the Law of Proximity to create the perception of a <strong>single unified block</strong>. All elements should feel like one large group.",
+                // Logic: Gaps must be roughly equal and relatively small
+                check: (x, y) => {
+                    const diff = Math.abs(x - y);
+                    return (diff < 15 && x < 40 && y < 40);
+                },
+                hint: "Keep horizontal and vertical spacing equal and tight."
+            },
+            {
+                id: 2,
+                prompt: "Manipulate the space to create the perception of <strong>6 Vertical Columns</strong>.",
+                // Logic: X gap must be significantly larger than Y gap
+                check: (x, y) => {
+                    return (x > y * 2.5);
+                },
+                hint: "To see columns, elements must be closer vertically than horizontally."
+            },
+            {
+                id: 3,
+                prompt: "Now, reverse it. Create the perception of <strong>6 Horizontal Rows</strong>.",
+                // Logic: Y gap must be significantly larger than X gap
+                check: (x, y) => {
+                    return (y > x * 2.5);
+                },
+                hint: "Increase vertical space and decrease horizontal space."
+            },
+            {
+                id: 4,
+                prompt: "The Ultimate Test: Create a field of <strong>isolated points</strong>. No grouping should be immediately obvious.",
+                // Logic: Both gaps should be maximized
+                check: (x, y) => {
+                    return (x > 70 && y > 70);
+                },
+                hint: "Maximize the distance between all elements."
+            }
+        ];
+
+        // --- DOM Elements ---
+        const els = {
+            grid: document.getElementById('grid'),
+            gapXInput: document.getElementById('gap-x'),
+            gapYInput: document.getElementById('gap-y'),
+            gapXVal: document.getElementById('gap-x-val'),
+            gapYVal: document.getElementById('gap-y-val'),
+            taskText: document.getElementById('task-text'),
+            levelInd: document.getElementById('level-indicator'),
+            progress: document.getElementById('progress'),
+            btn: document.getElementById('check-btn'),
+            feedback: document.getElementById('feedback'),
+            feedbackText: document.getElementById('feedback-text'),
+            feedbackIcon: document.getElementById('feedback-icon')
+        };
+
+        // --- Initialization ---
+        function init() {
+            generateGrid();
+            loadLevel(0);
+            updateGridVisuals();
+            
+            // Event Listeners
+            els.gapXInput.addEventListener('input', (e) => {
+                state.gapX = parseInt(e.target.value);
+                updateGridVisuals();
+            });
+
+            els.gapYInput.addEventListener('input', (e) => {
+                state.gapY = parseInt(e.target.value);
+                updateGridVisuals();
+            });
+
+            els.btn.addEventListener('click', validateLevel);
+        }
+
+        // --- Core Functions ---
+
+        function generateGrid() {
+            els.grid.innerHTML = '';
+            els.grid.style.gridTemplateColumns = `repeat(${CONFIG.cols}, 1fr)`;
+            
+            for(let i = 0; i < CONFIG.gridSize; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('dot');
+                // Staggered animation delay for cool entrance
+                dot.style.animation = `fadeIn 0.5s ease ${i * 0.01}s backwards`;
+                els.grid.appendChild(dot);
+            }
+        }
+
+        function loadLevel(index) {
+            state.currentLevel = index;
+            const level = levels[index];
+            
+            // UI Updates
+            els.taskText.innerHTML = level.prompt;
+            els.levelInd.textContent = `Level ${index + 1}/${levels.length}`;
+            els.progress.style.width = `${((index) / levels.length) * 100}%`;
+            
+            // Reset Feedback
+            els.feedback.className = 'feedback-overlay';
+            
+            // Randomize slider positions slightly to force interaction
+            state.gapX = 20; 
+            state.gapY = 20;
+            els.gapXInput.value = state.gapX;
+            els.gapYInput.value = state.gapY;
+            updateGridVisuals();
+        }
+
+        function updateGridVisuals() {
+            // Update Text
+            els.gapXVal.textContent = `${state.gapX}px`;
+            els.gapYVal.textContent = `${state.gapY}px`;
+            
+            // Update Grid CSS
+            els.grid.style.columnGap = `${state.gapX}px`;
+            els.grid.style.rowGap = `${state.gapY}px`;
+        }
+
+        function validateLevel() {
+            const level = levels[state.currentLevel];
+            const isWin = level.check(state.gapX, state.gapY);
+
+            if (isWin) {
+                showFeedback(true, "Perfect! Perception match achieved.");
+                
+                // Advance Level
+                setTimeout(() => {
+                    if (state.currentLevel < levels.length - 1) {
+                        loadLevel(state.currentLevel + 1);
+                    } else {
+                        gameComplete();
+                    }
+                }, 1500);
+            } else {
+                showFeedback(false, level.hint);
+            }
+        }
+
+        function showFeedback(success, message) {
+            els.feedback.className = `feedback-overlay show ${success ? 'success' : 'error'}`;
+            els.feedbackIcon.textContent = success ? '✓' : '✕';
+            els.feedbackText.textContent = message;
+            
+            // Auto hide error after 3s
+            if(!success) {
+                setTimeout(() => {
+                    els.feedback.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        function gameComplete() {
+            els.taskText.innerHTML = "<strong>Congratulations!</strong><br>You have mastered the Law of Proximity. You understand how spacing dictates user perception.";
+            els.btn.textContent = "Restart Training";
+            els.btn.onclick = () => location.reload();
+            els.progress.style.width = '100%';
+            els.levelInd.textContent = "Mastery Achieved";
+            confettiEffect();
+        }
+        
+        // Simple visual flare for win state
+        function confettiEffect() {
+            const dots = document.querySelectorAll('.dot');
+            dots.forEach(dot => {
+                dot.style.background = 'var(--accent-success)';
+                dot.style.transform = `scale(0.8) rotate(${Math.random() * 360}deg)`;
+            });
+        }
+
+        // --- Run ---
+        init();
+
+    </script>
+</body>
+</html>
